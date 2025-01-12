@@ -1,5 +1,5 @@
 from pyspark.sql.types import *
-from pyspark.sql.functions import col, countDistinct
+from pyspark.sql.functions import col, countDistinct, to_timestamp
 from pyspark.sql import SparkSession
 
 spark = (
@@ -54,13 +54,36 @@ fire_df = spark.read.csv(sf_fire_file, header=True, schema=fire_schema)
 #     .where(col("CallType") != "Medical Incident")
 # )
 
-few_fire_df = (
-    fire_df
-    .select("CallType")
-    .where(col("CallType").isNotNull())
-    #.agg(countDistinct("CallType").alias("DistinctCallTypes"))
-    .distinct()
-    .show()
+# few_fire_df = (
+#     fire_df
+#     .select("CallType")
+#     .where(col("CallType").isNotNull())
+#     #.agg(countDistinct("CallType").alias("DistinctCallTypes"))
+#     .distinct()
+#     .show()
+# )
+
+new_fire_df = fire_df.withColumnRenamed("Delay", "ResponseDelayedinMins")
+
+(
+    new_fire_df
+    .select("ResponseDelayedinMins")
+    .where(col("ResponseDelayedinMins") > 5)
+    .show(5, False)
 )
 
-few_fire_df.show(5, truncate=False)
+fire_ts_df = (
+    new_fire_df
+    .withColumn("IncidentDate", to_timestamp(col("CallDate"), "MM/dd/yyyy"))
+    .drop("CallDate")
+    .withColumn("OnWatchDate", to_timestamp(col("WatchDate"), "MM/dd/yyyy"))
+    .drop("WatchDate")
+    .withColumn("AvailableDtTS", to_timestamp(col("AvailableDtTm"),
+    "MM/dd/yyyy hh:mm:ss a"))
+    .drop("AvailableDtTm"))
+
+(
+    fire_ts_df
+    .select("IncidentDate", "OnWatchDate", "AvailableDtTS")
+    .show(5, False)
+)
