@@ -1,5 +1,5 @@
 from pyspark.sql.types import *
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, countDistinct
 from pyspark.sql import SparkSession
 
 spark = (
@@ -48,10 +48,19 @@ fire_df = spark.read.csv(sf_fire_file, header=True, schema=fire_schema)
 #fire_df.write.format("parquet").save(sf_fire_file_path)
 #fire_df.write.format("parquet").saveAsTable(parquet_table) # saving as table
 
+# few_fire_df = (
+#     fire_df
+#     .select("IncidentNumber", "AvailableDtTm", "CallType")
+#     .where(col("CallType") != "Medical Incident")
+# )
+
 few_fire_df = (
     fire_df
-    .select("IncidentNumber", "AvailableDtTm", "CallType")
-    .where(col("CallType") != "Medical Incident")
+    .select("CallType")
+    .where(col("CallType").isNotNull())
+    #.agg(countDistinct("CallType").alias("DistinctCallTypes"))
+    .distinct()
+    .show()
 )
 
 few_fire_df.show(5, truncate=False)
